@@ -1,0 +1,44 @@
+from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
+from routers import user_router, post_router, comment_router, like_router
+
+app = FastAPI()
+
+app.include_router(user_router.router)
+app.include_router(post_router.router)
+app.include_router(comment_router.router)
+app.include_router(like_router.router)
+
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to Micro SNS Backend!"}
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Micro SNS API",
+        version="1.0.0",
+        description="API for a Micro SNS service",
+        routes=app.routes,
+    )
+    # Manually define the security scheme to force a simple bearer token input
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter JWT token in the format: Bearer &lt;token&gt;"
+        }
+    }
+    # Apply the security scheme to all paths that need it
+    for path_item in openapi_schema["paths"].values():
+        for operation in path_item.values():
+            if operation.get("security") is not None:
+                operation["security"] = [{
+                    "BearerAuth": []
+                }]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
