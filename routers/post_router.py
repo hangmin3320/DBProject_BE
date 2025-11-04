@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database.database import get_db
 from database import models
@@ -21,8 +21,18 @@ def create_post(post: post_schemas.PostCreate, db: Session = Depends(get_db), cu
     return db_post
 
 @router.get("/", response_model=List[post_schemas.PostResponse])
-def read_posts(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    posts = db.query(models.Post).offset(skip).limit(limit).all()
+def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, user_id: Optional[int] = None, sort_by: str = 'latest'):
+    query = db.query(models.Post)
+
+    if user_id:
+        query = query.filter(models.Post.user_id == user_id)
+
+    if sort_by == 'likes':
+        query = query.order_by(models.Post.like_count.desc())
+    else: # Default to 'latest'
+        query = query.order_by(models.Post.created_at.desc())
+
+    posts = query.offset(skip).limit(limit).all()
     return posts
 
 @router.get("/{post_id}", response_model=post_schemas.PostResponse)
