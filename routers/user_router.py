@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from sqlalchemy import or_
 
 from database.database import get_db
 from database import models
@@ -11,6 +12,16 @@ router = APIRouter(
     prefix="/users",
     tags=["users"]
 )
+
+@router.get("/search", response_model=List[user_schemas.UserResponse])
+def search_users(q: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if not q:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Search query cannot be empty")
+    
+    users = db.query(models.User).filter(
+        models.User.username.ilike(f"%{q}%")
+    ).offset(skip).limit(limit).all()
+    return users
 
 @router.post("/signup", response_model=user_schemas.UserResponse)
 def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db)):
