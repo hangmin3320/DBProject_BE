@@ -1,11 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import re
 
 from database.database import get_db
 from database import models
 from schemas import post_schemas
 from auth import auth
+
+def get_or_create_hashtags(db: Session, content: str) -> List[models.Hashtag]:
+    hashtag_names = set(re.findall(r"#(\w+)", content))
+    hashtags = []
+    for name in hashtag_names:
+        db_hashtag = db.query(models.Hashtag).filter(models.Hashtag.name == name).first()
+        if not db_hashtag:
+            db_hashtag = models.Hashtag(name=name)
+            db.add(db_hashtag)
+        hashtags.append(db_hashtag)
+    return hashtags
 
 router = APIRouter(
     prefix="/posts",
@@ -25,11 +37,16 @@ def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Dep
 
 @router.post("/", response_model=post_schemas.PostResponse)
 def create_post(post: post_schemas.PostCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    db_post = models.Post(**post.model_dump(), user_id=current_user.user_id)
-    db.add(db_post)
-    db.commit()
-    db.refresh(db_post)
-    return db_post
+    try:
+        hashtags = get_or_create_hashtags(db, post.content)
+        db_post = models.Post(**post.model_dump(), user_id=current_user.user_id, hashtags=hashtags)
+        db.add(db_post)
+        db.commit()
+        db.refresh(db_post)
+        return db_post
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.get("/", response_model=List[post_schemas.PostResponse])
 def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, user_id: Optional[int] = None, sort_by: str = 'latest'):
@@ -62,12 +79,17 @@ def update_post(post_id: int, post_update: post_schemas.PostUpdate, db: Session 
     if db_post.user_id != current_user.user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this post")
     
-    for key, value in post_update.model_dump(exclude_unset=True).items():
-        setattr(db_post, key, value)
-    
-    db.commit()
-    db.refresh(db_post)
-    return db_post
+    try:
+        if post_update.content is not None:
+            db_post.content = post_update.content
+            db_post.hashtags = get_or_create_hashtags(db, post_update.content)
+        
+        db.commit()
+        db.refresh(db_post)
+        return db_post
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

@@ -1,6 +1,15 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
-from routers import user_router, post_router, comment_router, like_router, follow_router
+from routers import user_router, post_router, comment_router, like_router, follow_router, hashtag_router
+
+app = FastAPI()
+
+app.include_router(user_router.router)
+app.include_router(post_router.router)
+app.include_router(comment_router.router)
+app.include_router(like_router.router)
+app.include_router(follow_router.router)
+app.include_router(hashtag_router.router)
 
 app = FastAPI()
 

@@ -1,8 +1,23 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from database.database import Base
+
+# Association Table for Post and Hashtag
+post_hashtag_association = Table(
+    'post_hashtags',
+    Base.metadata,
+    Column('post_id', Integer, ForeignKey('posts.post_id'), primary_key=True),
+    Column('hashtag_id', Integer, ForeignKey('hashtags.hashtag_id'), primary_key=True)
+)
+
+class Hashtag(Base):
+    __tablename__ = "hashtags"
+    hashtag_id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, index=True, nullable=False)
+
+    posts = relationship("Post", secondary=post_hashtag_association, back_populates="hashtags")
 
 class Follow(Base):
     __tablename__ = "follows"
@@ -54,6 +69,7 @@ class Post(Base):
     owner = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="parent_post")
     likes = relationship("Like", back_populates="liked_post")
+    hashtags = relationship("Hashtag", secondary=post_hashtag_association, back_populates="posts")
 
 class Comment(Base):
     __tablename__ = "comments"
