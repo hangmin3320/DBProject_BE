@@ -12,6 +12,17 @@ router = APIRouter(
     tags=["posts"]
 )
 
+@router.get("/feed", response_model=List[post_schemas.PostResponse])
+def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    following_ids = [f.following_id for f in current_user.following]
+
+    if not following_ids:
+        return []
+
+    feed_posts = db.query(models.Post).filter(models.Post.user_id.in_(following_ids)).order_by(models.Post.created_at.desc()).all()
+    return feed_posts
+
+
 @router.post("/", response_model=post_schemas.PostResponse)
 def create_post(post: post_schemas.PostCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_post = models.Post(**post.model_dump(), user_id=current_user.user_id)

@@ -4,6 +4,13 @@ from sqlalchemy.sql import func
 
 from database.database import Base
 
+class Follow(Base):
+    __tablename__ = "follows"
+
+    follower_id = Column(Integer, ForeignKey("users.user_id"), primary_key=True)
+    following_id = Column(Integer, ForeignKey("users.user_id"), primary_key=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class User(Base):
     __tablename__ = "users"
 
@@ -12,11 +19,28 @@ class User(Base):
     password = Column(String(255), nullable=False)
     username = Column(String(100), nullable=False)
     bio = Column(Text, nullable=True)
+    follower_count = Column(Integer, default=0)
+    following_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     posts = relationship("Post", back_populates="owner")
     comments = relationship("Comment", back_populates="comment_owner")
     likes = relationship("Like", back_populates="like_owner")
+
+    # Relationships for followers/following
+    followers = relationship(
+        "Follow",
+        foreign_keys=[Follow.following_id],
+        backref="following_user",
+        cascade="all, delete-orphan"
+    )
+    following = relationship(
+        "Follow",
+        foreign_keys=[Follow.follower_id],
+        backref="follower_user",
+        cascade="all, delete-orphan"
+    )
+
 
 class Post(Base):
     __tablename__ = "posts"

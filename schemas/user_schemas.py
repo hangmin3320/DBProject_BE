@@ -17,6 +17,8 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     user_id: int
     created_at: datetime
+    follower_count: int
+    following_count: int
 
     class Config:
         from_attributes = True
