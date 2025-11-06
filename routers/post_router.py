@@ -4,6 +4,7 @@ from typing import List, Optional
 import re
 import uuid
 import shutil
+from datetime import datetime, timedelta
 
 from database.database import get_db
 from database import models
@@ -35,6 +36,12 @@ def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Dep
 
     feed_posts = db.query(models.Post).filter(models.Post.user_id.in_(following_ids)).order_by(models.Post.created_at.desc()).all()
     return feed_posts
+
+@router.get("/trending", response_model=List[post_schemas.PostResponse])
+def get_trending_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    trending_posts = db.query(models.Post).filter(models.Post.created_at >= seven_days_ago).order_by(models.Post.like_count.desc()).offset(skip).limit(limit).all()
+    return trending_posts
 
 
 @router.post("/", response_model=post_schemas.PostResponse)
