@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import re
+import uuid
+import shutil
 
 from database.database import get_db
 from database import models
@@ -36,14 +38,33 @@ def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Dep
 
 
 @router.post("/", response_model=post_schemas.PostResponse)
-def create_post(post: post_schemas.PostCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def create_post(content: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user), files: List[UploadFile] = File([])):
     try:
-        hashtags = get_or_create_hashtags(db, post.content)
-        db_post = models.Post(**post.model_dump(), user_id=current_user.user_id, hashtags=hashtags)
+        # 1. Create Post and Hashtags
+        hashtags = get_or_create_hashtags(db, content)
+        db_post = models.Post(content=content, user_id=current_user.user_id, hashtags=hashtags)
         db.add(db_post)
+        db.flush() # Flush to get post_id for images
+
+        # 2. Handle Image Uploads
+        image_urls = []
+        for file in files:
+            file_extension = file.filename.split(".")[-1]
+            file_name = f"{uuid.uuid4()}.{file_extension}"
+            file_path = f"uploads/images/{file_name}"
+            
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            image_url = f"/uploads/images/{file_name}"
+            db_image = models.PostImage(post_id=db_post.post_id, image_url=image_url)
+            db.add(db_image)
+            image_urls.append(image_url)
+
         db.commit()
         db.refresh(db_post)
         return db_post
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

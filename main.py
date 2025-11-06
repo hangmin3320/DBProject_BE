@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 from routers import user_router, post_router, comment_router, like_router, follow_router, hashtag_router
 
 app = FastAPI()
+
+# Mount static files directory
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.include_router(user_router.router)
 app.include_router(post_router.router)

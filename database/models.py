@@ -70,6 +70,16 @@ class Post(Base):
     comments = relationship("Comment", back_populates="parent_post")
     likes = relationship("Like", back_populates="liked_post")
     hashtags = relationship("Hashtag", secondary=post_hashtag_association, back_populates="posts")
+    images = relationship("PostImage", back_populates="post")
+
+class PostImage(Base):
+    __tablename__ = "post_images"
+    image_id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("posts.post_id"), nullable=False)
+    image_url = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    post = relationship("Post", back_populates="images")
 
 class Comment(Base):
     __tablename__ = "comments"
