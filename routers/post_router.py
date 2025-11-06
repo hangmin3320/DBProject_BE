@@ -47,8 +47,13 @@ def create_post(content: str = Form(...), db: Session = Depends(get_db), current
         db.flush() # Flush to get post_id for images
 
         # 2. Handle Image Uploads
+        allowed_mime_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
         image_urls = []
         for file in files:
+            # Validate file type
+            if file.content_type not in allowed_mime_types:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File type {file.content_type} not allowed. Only images are accepted.")
+
             file_extension = file.filename.split(".")[-1]
             file_name = f"{uuid.uuid4()}.{file_extension}"
             file_path = f"uploads/images/{file_name}"
