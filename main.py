@@ -1,9 +1,19 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware # Import CORSMiddleware
 from routers import user_router, post_router, comment_router, like_router, follow_router, hashtag_router
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Mount static files directory
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -15,13 +25,7 @@ app.include_router(like_router.router)
 app.include_router(follow_router.router)
 app.include_router(hashtag_router.router)
 
-app = FastAPI()
 
-app.include_router(user_router.router)
-app.include_router(post_router.router)
-app.include_router(comment_router.router)
-app.include_router(like_router.router)
-app.include_router(follow_router.router)
 
 @app.get("/")
 async def read_root():
