@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
-from typing import List
+from typing import List, Optional
 
+from .post_router import _set_is_liked_for_posts
 from database.database import get_db
 from database import models
 from schemas import post_schemas
@@ -23,16 +24,6 @@ def get_posts_by_hashtag(tag_name: str, db: Session = Depends(get_db), current_u
         models.Post.hashtags.any(models.Hashtag.hashtag_id == db_hashtag.hashtag_id)
     ).all()
 
-    # Add is_liked information to each post if user is authenticated
-    if current_user:
-        liked_post_ids = [like.post_id for like in db.query(models.Like).filter(
-            models.Like.user_id == current_user.user_id
-        ).all()]
-
-        for post in posts_with_user:
-            post.is_liked = post.post_id in liked_post_ids
-    else:
-        for post in posts_with_user:
-            post.is_liked = False
+    _set_is_liked_for_posts(db, current_user, posts_with_user)
 
     return posts_with_user

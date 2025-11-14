@@ -11,6 +11,22 @@ from database import models
 from schemas import post_schemas
 from auth import auth
 
+def _set_is_liked_for_posts(db: Session, current_user: Optional[models.User], posts: List[models.Post]):
+    if not posts:
+        return
+
+    if not current_user:
+        for post in posts:
+            post.is_liked = False
+        return
+
+    liked_post_ids = {like.post_id for like in db.query(models.Like.post_id).filter(
+        models.Like.user_id == current_user.user_id
+    ).all()}
+
+    for post in posts:
+        post.is_liked = post.post_id in liked_post_ids
+
 def get_or_create_hashtags(db: Session, content: str) -> List[models.Hashtag]:
     hashtag_names = set(re.findall(r"#(\w+)", content))
     hashtags = []
@@ -108,7 +124,7 @@ def create_post(content: str = Form(...), db: Session = Depends(get_db), current
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 @router.get("/", response_model=List[post_schemas.PostResponse])
-def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, user_id: Optional[int] = None, sort_by: str = 'latest'):
+def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, user_id: Optional[int] = None, sort_by: str = 'latest', current_user: models.User = Depends(auth.get_current_user_optional)):
     query = db.query(models.Post).options(joinedload(models.Post.user))
 
     if user_id:
@@ -120,6 +136,7 @@ def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, u
         query = query.order_by(models.Post.created_at.desc())
 
     posts = query.offset(skip).limit(limit).all()
+    _set_is_liked_for_posts(db, current_user, posts)
     return posts
 
 @router.get("/{post_id}", response_model=post_schemas.PostResponse)

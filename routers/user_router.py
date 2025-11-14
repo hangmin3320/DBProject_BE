@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from sqlalchemy import or_
 
+from .post_router import _set_is_liked_for_posts
 from database.database import get_db
 from database import models
 from schemas import user_schemas, post_schemas
@@ -108,16 +109,6 @@ def get_user_posts(user_id: int, db: Session = Depends(get_db), current_user: mo
         models.Post.user_id == user_id
     ).order_by(models.Post.created_at.desc()).all()
 
-    # Add is_liked information to each post if user is authenticated
-    if current_user:
-        liked_post_ids = [like.post_id for like in db.query(models.Like).filter(
-            models.Like.user_id == current_user.user_id
-        ).all()]
-
-        for post in posts:
-            post.is_liked = post.post_id in liked_post_ids
-    else:
-        for post in posts:
-            post.is_liked = False
+    _set_is_liked_for_posts(db, current_user, posts)
 
     return posts
