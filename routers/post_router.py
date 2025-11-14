@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import re
 import uuid
@@ -34,13 +34,32 @@ def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Dep
     if not following_ids:
         return []
 
-    feed_posts = db.query(models.Post).filter(models.Post.user_id.in_(following_ids)).order_by(models.Post.created_at.desc()).all()
+    # Get the current user's liked post IDs to determine is_liked status
+    liked_post_ids = [like.post_id for like in db.query(models.Like).filter(
+        models.Like.user_id == current_user.user_id
+    ).all()]
+
+    feed_posts = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+        models.Post.user_id.in_(following_ids)
+    ).order_by(models.Post.created_at.desc()).all()
+
+    # Add is_liked information to each post
+    for post in feed_posts:
+        post.is_liked = post.post_id in liked_post_ids
+
     return feed_posts
 
 @router.get("/trending", response_model=List[post_schemas.PostResponse])
 def get_trending_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    trending_posts = db.query(models.Post).filter(models.Post.created_at >= seven_days_ago).order_by(models.Post.like_count.desc()).offset(skip).limit(limit).all()
+    trending_posts = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+        models.Post.created_at >= seven_days_ago
+    ).order_by(models.Post.like_count.desc()).offset(skip).limit(limit).all()
+
+    # For trending posts, is_liked will be set to None or False since there's no authenticated user context
+    for post in trending_posts:
+        post.is_liked = False
+
     return trending_posts
 
 
@@ -74,7 +93,14 @@ def create_post(content: str = Form(...), db: Session = Depends(get_db), current
             image_urls.append(image_url)
 
         db.commit()
-        db.refresh(db_post)
+        # Refresh the post with user information using joinedload
+        db_post = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+            models.Post.post_id == db_post.post_id
+        ).first()
+
+        # Set is_liked to False for the newly created post (by the current user)
+        db_post.is_liked = False
+
         return db_post
 
     except Exception as e:
@@ -83,7 +109,7 @@ def create_post(content: str = Form(...), db: Session = Depends(get_db), current
 
 @router.get("/", response_model=List[post_schemas.PostResponse])
 def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, user_id: Optional[int] = None, sort_by: str = 'latest'):
-    query = db.query(models.Post)
+    query = db.query(models.Post).options(joinedload(models.Post.user))
 
     if user_id:
         query = query.filter(models.Post.user_id == user_id)
@@ -97,10 +123,23 @@ def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, u
     return posts
 
 @router.get("/{post_id}", response_model=post_schemas.PostResponse)
-def read_post(post_id: int, db: Session = Depends(get_db)):
-    post = db.query(models.Post).filter(models.Post.post_id == post_id).first()
+def read_post(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
+    post = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+        models.Post.post_id == post_id
+    ).first()
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    # Set is_liked status based on whether current user has liked the post
+    if current_user:
+        like_exists = db.query(models.Like).filter(
+            models.Like.user_id == current_user.user_id,
+            models.Like.post_id == post_id
+        ).first()
+        post.is_liked = like_exists is not None
+    else:
+        post.is_liked = False
+
     return post
 
 @router.put("/{post_id}", response_model=post_schemas.PostResponse)
@@ -118,7 +157,14 @@ def update_post(post_id: int, post_update: post_schemas.PostUpdate, db: Session 
             db_post.hashtags = get_or_create_hashtags(db, post_update.content)
         
         db.commit()
-        db.refresh(db_post)
+        # Refresh the post with user information using joinedload
+        db_post = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+            models.Post.post_id == post_id
+        ).first()
+
+        # Set is_liked to False when returning the updated post
+        db_post.is_liked = False
+
         return db_post
     except Exception as e:
         db.rollback()

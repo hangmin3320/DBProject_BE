@@ -38,7 +38,7 @@ class User(Base):
     following_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    posts = relationship("Post", back_populates="owner")
+    posts = relationship("Post", back_populates="user")
     comments = relationship("Comment", back_populates="comment_owner")
     likes = relationship("Like", back_populates="like_owner")
 
@@ -66,7 +66,7 @@ class Post(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     like_count = Column(Integer, default=0)
 
-    owner = relationship("User", back_populates="posts")
+    user = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="parent_post")
     likes = relationship("Like", back_populates="liked_post")
     hashtags = relationship("Hashtag", secondary=post_hashtag_association, back_populates="posts")

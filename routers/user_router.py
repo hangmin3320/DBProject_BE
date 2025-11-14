@@ -5,7 +5,7 @@ from sqlalchemy import or_
 
 from database.database import get_db
 from database import models
-from schemas import user_schemas
+from schemas import user_schemas, post_schemas
 from auth import auth
 
 router = APIRouter(
@@ -84,15 +84,40 @@ def update_user(user_id: int, user_update: user_schemas.UserUpdate, db: Session 
 def update_password(user_id: int, password_update: user_schemas.PasswordUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     if current_user.user_id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to change this password")
-    
+
     db_user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if not auth.verify_password(password_update.old_password, db_user.password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect old password")
-    
+
     db_user.password = auth.get_password_hash(password_update.new_password)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+@router.get("/{user_id}/posts", response_model=List[post_schemas.PostResponse])
+def get_user_posts(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
+    user = db.query(models.User).filter(models.User.user_id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Get posts with user information included
+    posts = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+        models.Post.user_id == user_id
+    ).order_by(models.Post.created_at.desc()).all()
+
+    # Add is_liked information to each post if user is authenticated
+    if current_user:
+        liked_post_ids = [like.post_id for like in db.query(models.Like).filter(
+            models.Like.user_id == current_user.user_id
+        ).all()]
+
+        for post in posts:
+            post.is_liked = post.post_id in liked_post_ids
+    else:
+        for post in posts:
+            post.is_liked = False
+
+    return posts
