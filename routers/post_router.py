@@ -218,5 +218,5 @@ def read_comments_for_post(post_id: int, skip: int = 0, limit: int = 100, db: Se
     if db_post is None:
         raise HTTPException(status_code=404, detail="Post not found")
     
-    comments = db.query(models.Comment).filter(models.Comment.post_id == post_id).offset(skip).limit(limit).all()
+    comments = db.query(models.Comment).options(joinedload(models.Comment.user)).filter(models.Comment.post_id == post_id).offset(skip).limit(limit).all()
     return comments

@@ -39,7 +39,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     posts = relationship("Post", back_populates="user")
-    comments = relationship("Comment", back_populates="comment_owner")
+    comments = relationship("Comment", back_populates="user")
     likes = relationship("Like", back_populates="like_owner")
 
     # Relationships for followers/following
@@ -90,7 +90,7 @@ class Comment(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    comment_owner = relationship("User", back_populates="comments")
+    user = relationship("User", back_populates="comments")
     parent_post = relationship("Post", back_populates="comments")
 
 class Like(Base):
