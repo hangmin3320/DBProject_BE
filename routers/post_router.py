@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from database.database import get_db
 from database import models
-from schemas import post_schemas
+from schemas import post_schemas, comment_schemas
 from auth import auth
 
 def _set_is_liked_for_posts(db: Session, current_user: Optional[models.User], posts: List[models.Post]):
@@ -199,3 +199,24 @@ def delete_post(post_id: int, db: Session = Depends(get_db), current_user: model
     db.delete(db_post)
     db.commit()
     return
+
+@router.post("/{post_id}/comments", response_model=comment_schemas.CommentResponse, tags=["comments"])
+def create_comment(post_id: int, comment: comment_schemas.CommentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_post = db.query(models.Post).filter(models.Post.post_id == post_id).first()
+    if db_post is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    db_comment = models.Comment(**comment.model_dump(), post_id=post_id, user_id=current_user.user_id)
+    db.add(db_comment)
+    db.commit()
+    db.refresh(db_comment)
+    return db_comment
+
+@router.get("/{post_id}/comments", response_model=List[comment_schemas.CommentResponse], tags=["comments"])
+def read_comments_for_post(post_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    db_post = db.query(models.Post).filter(models.Post.post_id == post_id).first()
+    if db_post is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    comments = db.query(models.Comment).filter(models.Comment.post_id == post_id).offset(skip).limit(limit).all()
+    return comments
