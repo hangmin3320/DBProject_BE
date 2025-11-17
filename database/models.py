@@ -67,10 +67,10 @@ class Post(Base):
     like_count = Column(Integer, default=0)
 
     user = relationship("User", back_populates="posts")
-    comments = relationship("Comment", back_populates="parent_post")
-    likes = relationship("Like", back_populates="liked_post")
-    hashtags = relationship("Hashtag", secondary=post_hashtag_association, back_populates="posts")
-    images = relationship("PostImage", back_populates="post")
+    comments = relationship("Comment", back_populates="parent_post", cascade="all, delete-orphan", passive_deletes=True)
+    likes = relationship("Like", back_populates="liked_post", cascade="all, delete-orphan", passive_deletes=True)
+    hashtags = relationship("Hashtag", secondary=post_hashtag_association, back_populates="posts", passive_deletes=True)
+    images = relationship("PostImage", back_populates="post", cascade="all, delete-orphan", passive_deletes=True)
 
 class PostImage(Base):
     __tablename__ = "post_images"
