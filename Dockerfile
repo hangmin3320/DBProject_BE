@@ -1,5 +1,5 @@
 # Python 3.10-slim 이미지를 기반으로 합니다.
-FROM python:3.10-slim
+FROM python:3.9
 
 # 작업 디렉토리를 /app으로 설정합니다.
 WORKDIR /app
