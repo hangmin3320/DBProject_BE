@@ -27,10 +27,10 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.include_router(user_router.router, prefix="/users")
 app.include_router(post_router.router, prefix="/posts")
-app.include_router(comment_router.router)
+app.include_router(comment_router.router, prefix="/comments")
 app.include_router(like_router.router)
-app.include_router(follow_router.router)
-app.include_router(hashtag_router.router)
+app.include_router(follow_router.router, prefix="/users")
+app.include_router(hashtag_router.router, prefix="/tags")
 
 
 

@@ -9,7 +9,6 @@ from schemas import post_schemas
 from auth import auth
 
 router = APIRouter(
-    prefix="/tags",
     tags=["hashtags"]
 )
 

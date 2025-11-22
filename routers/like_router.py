@@ -8,11 +8,10 @@ from schemas import like_schemas
 from auth import auth
 
 router = APIRouter(
-    prefix="/posts",
     tags=["likes"]
 )
 
-@router.post("/{post_id}/like", response_model=like_schemas.LikeResponse)
+@router.post("/posts/{post_id}/like", response_model=like_schemas.LikeResponse)
 def toggle_like(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_post = db.query(models.Post).filter(models.Post.post_id == post_id).first()
     if db_post is None:
@@ -40,7 +39,7 @@ def toggle_like(post_id: int, db: Session = Depends(get_db), current_user: model
         db.refresh(new_like)
         return new_like
 
-@router.get("/{post_id}/likes", response_model=List[like_schemas.LikeResponse])
+@router.get("/posts/{post_id}/likes", response_model=List[like_schemas.LikeResponse])
 def get_likes_for_post(post_id: int, db: Session = Depends(get_db)):
     db_post = db.query(models.Post).filter(models.Post.post_id == post_id).first()
     if db_post is None:

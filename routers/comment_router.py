@@ -7,7 +7,6 @@ from schemas import comment_schemas
 from auth import auth
 
 router = APIRouter(
-    prefix="/comments",
     tags=["comments"]
 )
 

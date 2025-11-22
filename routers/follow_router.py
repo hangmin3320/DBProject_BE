@@ -8,7 +8,6 @@ from schemas import user_schemas
 from auth import auth
 
 router = APIRouter(
-    prefix="/users",
     tags=["follows"]
 )
 
