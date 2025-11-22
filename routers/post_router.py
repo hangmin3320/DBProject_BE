@@ -46,9 +46,8 @@ router = APIRouter(
 @router.get("/feed", response_model=List[post_schemas.PostResponse])
 def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     following_ids = [f.following_id for f in current_user.following]
-
-    if not following_ids:
-        return []
+    # Also include the current user's own ID to see their own posts in the feed
+    all_ids_to_show = following_ids + [current_user.user_id]
 
     # Get the current user's liked post IDs to determine is_liked status
     liked_post_ids = [like.post_id for like in db.query(models.Like).filter(
@@ -56,7 +55,7 @@ def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Dep
     ).all()]
 
     feed_posts = db.query(models.Post).options(joinedload(models.Post.user)).filter(
-        models.Post.user_id.in_(following_ids)
+        models.Post.user_id.in_(all_ids_to_show)
     ).order_by(models.Post.created_at.desc()).all()
 
     # Add is_liked information to each post
