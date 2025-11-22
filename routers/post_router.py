@@ -39,7 +39,6 @@ def get_or_create_hashtags(db: Session, content: str) -> List[models.Hashtag]:
     return hashtags
 
 router = APIRouter(
-    prefix="/posts",
     tags=["posts"]
 )
 
