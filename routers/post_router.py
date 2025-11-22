@@ -121,7 +121,7 @@ def create_post(content: str = Form(...), db: Session = Depends(get_db), current
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.get("/", response_model=List[post_schemas.PostResponse])
+@router.get("", response_model=List[post_schemas.PostResponse])
 def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, user_id: Optional[int] = None, sort_by: str = 'latest', current_user: models.User = Depends(auth.get_current_user_optional)):
     query = db.query(models.Post).options(joinedload(models.Post.user))
 
