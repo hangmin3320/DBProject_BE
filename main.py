@@ -25,7 +25,7 @@ app.add_middleware(
 # Mount static files directory
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-app.include_router(user_router.router)
+app.include_router(user_router.router, prefix="/users")
 app.include_router(post_router.router, prefix="/posts")
 app.include_router(comment_router.router)
 app.include_router(like_router.router)
