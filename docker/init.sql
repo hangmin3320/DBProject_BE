@@ -1,5 +1,5 @@
 -- micro_sns_ddl.sql
-USE dbproject;
+USE mydatabase;
 
 -- Drop tables if they exist to allow for clean re-creation
 DROP TABLE IF EXISTS post_images;
