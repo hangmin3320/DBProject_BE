@@ -79,7 +79,7 @@ def get_trending_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get
     return trending_posts
 
 
-@router.post("/", response_model=post_schemas.PostResponse)
+@router.post("", response_model=post_schemas.PostResponse)
 def create_post(content: str = Form(...), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user), files: List[UploadFile] = File([])):
     try:
         # 1. Create Post and Hashtags
