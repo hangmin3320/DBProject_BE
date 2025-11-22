@@ -38,17 +38,17 @@ app.include_router(hashtag_router.router)
 async def read_root():
     return {"message": "Welcome to Micro SNS Backend!"}
 
-@app.options("/{full_path:path}")
-async def preflight_handler(request):
-    """
-    OPTIONS 요청을 처리하여 CORS preflight 요청에 응답
-    """
-    response = PlainTextResponse("OK")
-    response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD"
-    response.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers", "*")
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    return response
+# @app.options("/{full_path:path}")
+# async def preflight_handler(request):
+#     """
+#     OPTIONS 요청을 처리하여 CORS preflight 요청에 응답
+#     """
+#     response = PlainTextResponse("OK")
+#     response.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+#     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD"
+#     response.headers["Access-Control-Allow-Headers"] = request.headers.get("Access-Control-Request-Headers", "*")
+#     response.headers["Access-Control-Allow-Credentials"] = "true"
+#     return response
 
 def custom_openapi():
     if app.openapi_schema:
