@@ -130,6 +130,8 @@ def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, u
 
     if sort_by == 'likes':
         query = query.order_by(models.Post.like_count.desc())
+    elif sort_by == 'oldest':
+        query = query.order_by(models.Post.created_at.asc())
     else: # Default to 'latest'
         query = query.order_by(models.Post.created_at.desc())
 
