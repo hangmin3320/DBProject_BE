@@ -64,15 +64,13 @@ def get_user_feed(db: Session = Depends(get_db), current_user: models.User = Dep
     return feed_posts
 
 @router.get("/trending", response_model=List[post_schemas.PostResponse])
-def get_trending_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+def get_trending_posts(skip: int = 0, limit: int = 10, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     trending_posts = db.query(models.Post).options(joinedload(models.Post.user)).filter(
         models.Post.created_at >= seven_days_ago
     ).order_by(models.Post.like_count.desc()).offset(skip).limit(limit).all()
 
-    # For trending posts, is_liked will be set to None or False since there's no authenticated user context
-    for post in trending_posts:
-        post.is_liked = False
+    _set_is_liked_for_posts(db, current_user, trending_posts)
 
     return trending_posts
 
