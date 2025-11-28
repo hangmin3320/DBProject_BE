@@ -137,6 +137,27 @@ def read_posts(db: Session = Depends(get_db), skip: int = 0, limit: int = 100, u
     _set_is_liked_for_posts(db, current_user, posts)
     return posts
 
+@router.get("/liked", response_model=List[post_schemas.PostResponse])
+def get_liked_posts(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # 1. Query models.Like to get post IDs liked by the current user.
+    liked_post_ids_query = db.query(models.Like.post_id).filter(
+        models.Like.user_id == current_user.user_id
+    )
+    liked_post_ids = [post_id for post_id, in liked_post_ids_query.all()]
+
+    # 2. Query models.Post to retrieve the actual post objects based on the liked post IDs.
+    if not liked_post_ids:
+        return []
+
+    liked_posts = db.query(models.Post).options(joinedload(models.Post.user)).filter(
+        models.Post.post_id.in_(liked_post_ids)
+    ).order_by(models.Post.created_at.desc()).all()
+
+    # 3. Ensure the `is_liked` status is correctly set for the returned posts.
+    _set_is_liked_for_posts(db, current_user, liked_posts)
+
+    return liked_posts
+
 @router.get("/{post_id}", response_model=post_schemas.PostResponse)
 def read_post(post_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
     post = db.query(models.Post).options(joinedload(models.Post.user)).filter(
