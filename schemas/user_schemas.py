@@ -19,6 +19,7 @@ class UserResponse(UserBase):
     created_at: datetime
     follower_count: int
     following_count: int
+    is_following: Optional[bool] = False
 
     class Config:
         from_attributes = True

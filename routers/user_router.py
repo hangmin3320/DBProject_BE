@@ -58,10 +58,23 @@ def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
 
 
 @router.get("/{user_id}", response_model=user_schemas.UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db)):
+def read_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Set default
+    user.is_following = False
+
+    # Check if the current user is authenticated and is not viewing their own profile
+    if current_user and current_user.user_id != user_id:
+        follow_relation = db.query(models.Follow).filter(
+            models.Follow.follower_id == current_user.user_id,
+            models.Follow.following_id == user_id
+        ).first()
+        if follow_relation:
+            user.is_following = True
+            
     return user
 
 @router.put("/{user_id}", response_model=user_schemas.UserResponse)
