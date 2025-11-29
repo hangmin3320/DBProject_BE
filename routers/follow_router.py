@@ -1,11 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database.database import get_db
 from database import models
 from schemas import user_schemas
 from auth import auth
+
+def _set_is_following_for_users(db: Session, current_user: Optional[models.User], users: List[models.User]):
+    if not users or not current_user:
+        for user in users:
+            user.is_following = False
+        return
+
+    following_ids = {
+        follow.following_id for follow in db.query(models.Follow.following_id).filter(
+            models.Follow.follower_id == current_user.user_id
+        ).all()
+    }
+
+    for user in users:
+        user.is_following = user.user_id in following_ids
 
 router = APIRouter(
     tags=["follows"]
@@ -60,19 +75,21 @@ def unfollow_user(user_id: int, db: Session = Depends(get_db), current_user: mod
     db.commit()
 
 @router.get("/{user_id}/followers", response_model=List[user_schemas.UserResponse])
-def get_followers(user_id: int, db: Session = Depends(get_db)):
+def get_followers(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
     followers = db.query(models.User).join(models.Follow, models.User.user_id == models.Follow.follower_id).filter(models.Follow.following_id == user_id).all()
+    _set_is_following_for_users(db, current_user, followers)
     return followers
 
 @router.get("/{user_id}/following", response_model=List[user_schemas.UserResponse])
-def get_following(user_id: int, db: Session = Depends(get_db)):
+def get_following(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user_optional)):
     user = db.query(models.User).filter(models.User.user_id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     following = db.query(models.User).join(models.Follow, models.User.user_id == models.Follow.following_id).filter(models.Follow.follower_id == user_id).all()
+    _set_is_following_for_users(db, current_user, following)
     return following
